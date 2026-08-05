@@ -19,20 +19,23 @@ Para que el proyecto funcione idénticamente en tu portátil y en la VM del camp
 
 ```mermaid
 graph TD
-    M0[Fase 0: Preparación y Abstracción] --> M1[Fase 1: MariaDB Container]
-    M1 --> M2[Fase 2: WordPress + PHP-FPM Container]
-    M2 --> M3[Fase 3: NGINX TLS/SSL Container]
-    M3 --> M4[Fase 4: Orquestación Compose + Secretos + Volúmenes]
-    M4 --> M5[Fase 5: Testing Local & Resiliencia]
-    M5 --> M6[Fase 6: Migración al Cluster 42 & Evaluación]
+    M0["✅ Fase 0: Preparación y Abstracción"] --> M1["✅ Fase 1: MariaDB Container"]
+    M1 --> M2["⬜ Fase 2: WordPress + PHP-FPM Container"]
+    M2 --> M3["⬜ Fase 3: NGINX TLS/SSL Container"]
+    M3 --> M4["⬜ Fase 4: Orquestación Compose + Secretos + Volúmenes"]
+    M4 --> M5["⬜ Fase 5: Testing Local & Resiliencia"]
+    M5 --> M6["⬜ Fase 6: Migración al Cluster 42 & Evaluación"]
+    style M0 fill:#2ecc71,color:#fff
+    style M1 fill:#2ecc71,color:#fff
+    style M2 fill:#3498db,color:#fff
 ```
 
 ---
 
 ### 🔹 FASE 0: Preparación del Entorno Local y Abstracción de Variables
-- [ ] **0.1. Mapeo de Host**:
+- [x] **0.1. Mapeo de Host**:
   - Añadir en `/etc/hosts` de tu equipo local: `127.0.0.1 rhiguita.42.fr`.
-- [ ] **0.2. Estructura Estándar de Carpetas**:
+- [x] **0.2. Estructura Estándar de Carpetas**:
   ```text
   inception/
   ├── Makefile
@@ -54,22 +57,22 @@ graph TD
               ├── conf/www.conf
               └── tools/entrypoint.sh
   ```
-- [ ] **0.3. Configuración del `Makefile` Raíz**:
+- [x] **0.3. Configuración del `Makefile` Raíz**:
   - Reglas obligatorias: `all`, `up`, `down`, `start`, `stop`, `status`, `clean`, `fclean`, `re`.
   - El `Makefile` debe verificar/crear los directorios `/home/${USER}/data/wordpress` y `/home/${USER}/data/mariadb` en el host antes de levantar Docker Compose.
-- [ ] **0.4. Gestión de Secretos Locales**:
+- [x] **0.4. Gestión de Secretos Locales**:
   - Crear script en `Makefile` o en herramientas locales para autogenerar archivos `.txt` en `secrets/` (`db_password.txt`, `db_root_password.txt`, `wp_admin_password.txt`).
 
 ---
 
 ### 🔹 FASE 1: Servicio MariaDB (Base de Datos)
-- [ ] **1.1. Dockerfile de MariaDB**:
+- [x] **1.1. Dockerfile de MariaDB**:
   - Basado en `debian:bookworm`.
   - Instalar `mariadb-server` y utilidades necesarias.
   - Exponer puerto interno `3306`.
-- [ ] **1.2. Configuración (`50-server.cnf`)**:
+- [x] **1.2. Configuración (`50-server.cnf`)**:
   - Modificar `bind-address` a `0.0.0.0` para permitir conexiones desde la red de Docker.
-- [ ] **1.3. Script de Inicialización (`entrypoint.sh`)**:
+- [x] **1.3. Script de Inicialización (`entrypoint.sh`)**:
   - Leer contraseñas desde los archivos montados en `/run/secrets/`.
   - Inicializar la base de datos `mariadb-install-db`.
   - Crear la base de datos del proyecto (`MYSQL_DATABASE`) y el usuario de WordPress (`MYSQL_USER`) asignando privilegios `GRANT ALL PRIVILEGES`.

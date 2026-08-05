@@ -1,0 +1,22 @@
+# MariaDB custom server configuration for Inception
+# Overrides default 50-server.cnf from debian package
+
+[mysqld]
+# Listen on all interfaces so WordPress container can connect via Docker network
+bind-address = 0.0.0.0
+
+# Default port
+port = 3306
+
+# Data directory
+datadir = /var/lib/mysql
+
+# Logging (useful for debugging, can be disabled in production)
+log_error = /var/log/mysql/error.log
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_general_ci
+
+# Disable skip-networking (we need TCP connections from WordPress)
+skip-networking = 0
