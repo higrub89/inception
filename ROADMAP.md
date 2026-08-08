@@ -20,7 +20,7 @@ Para que el proyecto funcione idénticamente en tu portátil y en la VM del camp
 ```mermaid
 graph TD
     M0["✅ Fase 0: Preparación y Abstracción"] --> M1["✅ Fase 1: MariaDB Container"]
-    M1 --> M2["⬜ Fase 2: WordPress + PHP-FPM Container"]
+    M1 --> M2["✅ Fase 2: WordPress + PHP-FPM Container"]
     M2 --> M3["⬜ Fase 3: NGINX TLS/SSL Container"]
     M3 --> M4["⬜ Fase 4: Orquestación Compose + Secretos + Volúmenes"]
     M4 --> M5["⬜ Fase 5: Testing Local & Resiliencia"]
@@ -82,14 +82,14 @@ graph TD
 ---
 
 ### 🔹 FASE 2: Servicio WordPress + PHP-FPM (Servidor de Aplicación)
-- [ ] **2.1. Dockerfile de WordPress**:
+- [x] **2.1. Dockerfile de WordPress**:
   - Basado en `debian:bookworm`.
   - Instalar `php-fpm`, `php-mysql`, `mariadb-client`, `curl`, `unzip`.
   - Instalar **WP-CLI** (`/usr/local/bin/wp`).
   - Exponer puerto interno `9000`.
-- [ ] **2.2. Configuración PHP-FPM (`www.conf`)**:
+- [x] **2.2. Configuración PHP-FPM (`www.conf`)**:
   - Cambiar `listen = /run/php/php8.2-fpm.sock` a `listen = 9000` (escucha en TCP, no socket UNIX).
-- [ ] **2.3. Script Entrypoint (`entrypoint.sh`)**:
+- [x] **2.3. Script Entrypoint (`entrypoint.sh`)**:
   - Esperar hasta que MariaDB esté respondiendo en el puerto 3306 (`mariadb-admin ping`).
   - Si `/var/www/html/wp-config.php` no existe:
     - Ejecutar `wp core download --path=/var/www/html`.
