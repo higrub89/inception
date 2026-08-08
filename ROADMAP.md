@@ -8,14 +8,14 @@ Desarrollar, configurar y validar localmente la infraestructura multi-contenedor
 ## ⚡ Principios de Portabilidad (Local ➔ 42 Campus VM)
 
 Para que el proyecto funcione idénticamente en tu portátil y en la VM del campus:
-1. **Abstracción del Usuario/Rutas**: No harcodear `/home/rhiguita/...`. Usar la variable `${USER}` o resolver la ruta de datos dinámicamente mediante el `Makefile` y `.env`.
+1. **Abstracción del Usuario/Rutas**: No harcodear `/home/rhiguita/...`. Usar la variable `${USER}` o resolver la ruta de datos dinámicamente mediante el `Makefile` (`DATA_PATH = /home/$(USER)/data`) y `.env`.
 2. **Cero Artefactos en Git**: Solo se sube código fuente (`Dockerfiles`, scripts `.sh`, configuraciones `.conf`, `Makefile`, `docker-compose.yml`). Ningún certificado, volumen ni secreto se almacena en el repositorio.
-3. **Construcción desde CERO**: Las imágenes se compilan con el flag `--build` desde las distribuciones oficiales requeridas (`debian:bookworm` / `debian:bullseye`).
+3. **Construcción desde CERO**: Las imágenes se compilan con el flag `--build` desde las distribuciones oficiales requeridas (`debian:bookworm`).
 4. **Dominio dinámico**: El dominio `<login>.42.fr` se parametriza en el `.env` (ej. `rhiguita.42.fr`).
 
 ---
 
-## 📅 FASES DE IMPLEMENTACIÓN DETALLADAS
+## 📅 FASES DE IMPLEMENTACIÓN Y ESTADO DEL PROYECTO
 
 ```mermaid
 graph TD
@@ -27,29 +27,30 @@ graph TD
     M5 --> M6["⬜ Fase 6: Migración al Cluster 42 & Evaluación"]
     style M0 fill:#2ecc71,color:#fff
     style M1 fill:#2ecc71,color:#fff
-    style M2 fill:#3498db,color:#fff
+    style M2 fill:#2ecc71,color:#fff
+    style M3 fill:#e74c3c,color:#fff
 ```
 
 ---
 
-### 🔹 FASE 0: Preparación del Entorno Local y Abstracción de Variables
+### 🔹 FASE 0: Preparación del Entorno Local y Abstracción de Variables (✅ COMPLETADA)
 - [x] **0.1. Mapeo de Host**:
-  - Añadir en `/etc/hosts` de tu equipo local: `127.0.0.1 rhiguita.42.fr`.
+  - Añadido en `/etc/hosts` de tu equipo local: `127.0.0.1 rhiguita.42.fr`.
 - [x] **0.2. Estructura Estándar de Carpetas**:
   ```text
   inception/
   ├── Makefile
-  ├── secrets/                 # Ignorado en .gitignore
+  ├── secrets/                 # Ignorado en .gitignore (.txt con passwords)
   └── srcs/
       ├── .env                 # Ignorado en .gitignore (se incluye .env.example)
-      ├── docker-compose.yml
+      ├── docker-compose.yml   # Pendiente (Fase 4)
       └── requirements/
           ├── mariadb/
           │   ├── Dockerfile
           │   ├── conf/50-server.cnf
           │   └── tools/entrypoint.sh
           ├── nginx/
-          │   ├── Dockerfile
+          │   ├── Dockerfile   # Pendiente (Fase 3)
           │   ├── conf/nginx.conf
           │   └── tools/entrypoint.sh
           └── wordpress/
@@ -58,68 +59,82 @@ graph TD
               └── tools/entrypoint.sh
   ```
 - [x] **0.3. Configuración del `Makefile` Raíz**:
-  - Reglas obligatorias: `all`, `up`, `down`, `start`, `stop`, `status`, `clean`, `fclean`, `re`.
-  - El `Makefile` debe verificar/crear los directorios `/home/${USER}/data/wordpress` y `/home/${USER}/data/mariadb` en el host antes de levantar Docker Compose.
+  - Reglas obligatorias: `all`, `up`, `down`, `start`, `stop`, `status`, `logs`, `clean`, `fclean`, `re`.
+  - El `Makefile` verifica/crea automáticamente los directorios `/home/$(USER)/data/wordpress` y `/home/$(USER)/data/mariadb` en el host (`init_dirs`).
 - [x] **0.4. Gestión de Secretos Locales**:
-  - Crear script en `Makefile` o en herramientas locales para autogenerar archivos `.txt` en `secrets/` (`db_password.txt`, `db_root_password.txt`, `wp_admin_password.txt`).
+  - Archivos `.txt` en `secrets/` (`db_password.txt`, `db_root_password.txt`, `wp_admin_password.txt`).
 
 ---
 
-### 🔹 FASE 1: Servicio MariaDB (Base de Datos)
-- [x] **1.1. Dockerfile de MariaDB**:
+### 🔹 FASE 1: Servicio MariaDB (Base de Datos) (✅ COMPLETADA)
+- [x] **1.1. Dockerfile de MariaDB** (`srcs/requirements/mariadb/Dockerfile`):
   - Basado en `debian:bookworm`.
-  - Instalar `mariadb-server` y utilidades necesarias.
-  - Exponer puerto interno `3306`.
+  - Instalación limpia de `mariadb-server`.
+  - Expone el puerto interno `3306`.
 - [x] **1.2. Configuración (`50-server.cnf`)**:
-  - Modificar `bind-address` a `0.0.0.0` para permitir conexiones desde la red de Docker.
+  - `bind-address = 0.0.0.0` para permitir conexiones TCP desde el contenedor WordPress en la red aislada Docker.
+  - Caracteres UTF-8 (`utf8mb4`).
 - [x] **1.3. Script de Inicialización (`entrypoint.sh`)**:
-  - Leer contraseñas desde los archivos montados en `/run/secrets/`.
-  - Inicializar la base de datos `mariadb-install-db`.
-  - Crear la base de datos del proyecto (`MYSQL_DATABASE`) y el usuario de WordPress (`MYSQL_USER`) asignando privilegios `GRANT ALL PRIVILEGES`.
-  - Asignar la contraseña del usuario `root` de MariaDB.
-  - Arrancar MariaDB en primer plano (`mysqld_safe` o `mariadbd`).
+  - Lee contraseñas desde `/run/secrets/db_password` y `/run/secrets/db_root_password`.
+  - Inicializa `/var/lib/mysql` con `mariadb-install-db`.
+  - Instancia temporal con `mariadbd --skip-networking` para bootstrap seguro.
+  - Crea base de datos (`MYSQL_DATABASE`) y usuario (`MYSQL_USER`) asignando `GRANT ALL PRIVILEGES ON db.* TO 'user'@'%'`.
+  - Arranca MariaDB en primer plano con `exec mariadbd` (PID 1).
 
 ---
 
-### 🔹 FASE 2: Servicio WordPress + PHP-FPM (Servidor de Aplicación)
-- [x] **2.1. Dockerfile de WordPress**:
+### 🔹 FASE 2: Servicio WordPress + PHP-FPM (Servidor de Aplicación) (✅ COMPLETADA)
+- [x] **2.1. Dockerfile de WordPress** (`srcs/requirements/wordpress/Dockerfile`):
   - Basado en `debian:bookworm`.
-  - Instalar `php-fpm`, `php-mysql`, `mariadb-client`, `curl`, `unzip`.
-  - Instalar **WP-CLI** (`/usr/local/bin/wp`).
-  - Exponer puerto interno `9000`.
+  - Instala `php8.2-fpm`, `php8.2-mysql`, `php8.2-xml`, `php8.2-curl`, `php8.2-mbstring`, `php8.2-zip`, `php8.2-gd`, `php8.2-intl`, `mariadb-client`, `curl`, `ca-certificates`.
+  - Instala **WP-CLI** en `/usr/local/bin/wp`.
+  - Expone el puerto interno `9000`.
 - [x] **2.2. Configuración PHP-FPM (`www.conf`)**:
-  - Cambiar `listen = /run/php/php8.2-fpm.sock` a `listen = 9000` (escucha en TCP, no socket UNIX).
+  - Escucha TCP `listen = 9000` (remueve el socket UNIX `/run/php/php8.2-fpm.sock`).
+  - Configura `clear_env = no` para pasar las variables de entorno de Docker a PHP.
+  - Gestor de procesos dinámico (`pm = dynamic`, `pm.max_children = 5`).
 - [x] **2.3. Script Entrypoint (`entrypoint.sh`)**:
-  - Esperar hasta que MariaDB esté respondiendo en el puerto 3306 (`mariadb-admin ping`).
+  - Healthcheck de dependencia: Bucle `until mariadb-admin ping -h mariadb ...` esperando a que MariaDB responda en puerto 3306.
   - Si `/var/www/html/wp-config.php` no existe:
-    - Ejecutar `wp core download --path=/var/www/html`.
-    - Ejecutar `wp config create` usando la DB y contraseñas de `/run/secrets/`.
-    - Ejecutar `wp core install` con URL `https://rhiguita.42.fr`, título, usuario admin y su contraseña.
-    - Ejecutar `wp user create` para el segundo usuario requerido por el subject (rol suscriptor/autor).
-  - Arrancar PHP-FPM en primer plano (`php-fpm8.2 -F`).
+    - Ejecuta `wp core download`.
+    - Ejecuta `wp config create` apuntando a `mariadb:3306` con secretos de `/run/secrets/`.
+    - Ejecuta `wp core install` con dominio `https://${DOMAIN_NAME}`, título, usuario administrador (`WP_ADMIN_USER`) y password (`wp_admin_password`).
+    - Crea el segundo usuario requerido (`WP_USER`, rol suscriptor).
+  - Ajusta los permisos de `/var/www/html` a `www-data:www-data`.
+  - Arranca PHP-FPM en primer plano con `exec php-fpm8.2 -F` (PID 1).
 
 ---
 
-### 🔹 FASE 3: Servicio NGINX (HTTPS & Reverse Proxy)
-- [ ] **3.1. Dockerfile de NGINX**:
+### 🔹 FASE 3: Servicio NGINX (HTTPS & Reverse Proxy) (⬜ PENDIENTE - PRÓXIMO PASO)
+- [ ] **3.1. Dockerfile de NGINX** (`srcs/requirements/nginx/Dockerfile`):
   - Basado en `debian:bookworm`.
   - Instalar `nginx` y `openssl`.
-  - Exponer puerto `443`.
-- [ ] **3.2. Generación de Certificado SSL/TLS**:
-  - Generar certificado autodfirmado mediante `openssl req` en `/etc/nginx/ssl/nginx.crt` y clave privada `/etc/nginx/ssl/nginx.key`.
-- [ ] **3.3. Configuración (`nginx.conf`)**:
-  - `listen 443 ssl;`
-  - `ssl_protocols TLSv1.2 TLSv1.3;` (cumplimiento estricto del subject).
-  - Directiva `server_name rhiguita.42.fr;`.
-  - Redirección de archivos `.php` hacia el contenedor de WordPress: `fastcgi_pass wordpress:9000;`.
-  - Configuración de `index index.php index.html;` y `root /var/www/html;`.
+  - Exponer únicamente el puerto `443` (HTTP/80 estrictamente prohibido por subject).
+- [ ] **3.2. Script Entrypoint / Certificados TLS**:
+  - Generar certificado autofirmado SSL mediante `openssl req -x509` en `/etc/nginx/ssl/nginx.crt` y clave `/etc/nginx/ssl/nginx.key`.
+  - Parámetros: `-nodes -days 365 -newkey rsa:2048 -subj "/C=ES/ST=Madrid/L=Madrid/O=42/OU=Student/CN=rhiguita.42.fr"`.
+- [ ] **3.3. Configuración NGINX (`nginx.conf`)**:
+  - Directiva `listen 443 ssl;`.
+  - TLS estricto: `ssl_protocols TLSv1.2 TLSv1.3;`.
+  - `server_name rhiguita.42.fr;`.
+  - Root: `/var/www/html` con `index index.php index.html;`.
+  - Bloque FastCGI para procesamiento de PHP:
+    ```nginx
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_intercept_errors on;
+        fastcgi_pass wordpress:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+    ```
+  - Arrancar NGINX en primer plano: `daemon off;` / `exec nginx -g "daemon off;"`.
 
 ---
 
-### 🔹 FASE 4: Orquestación General (`docker-compose.yml`)
+### 🔹 FASE 4: Orquestación General (`srcs/docker-compose.yml`) (⬜ PENDIENTE)
 - [ ] **4.1. Definición de Red**:
   - Red aislada tipo bridge: `inception_network`.
-- [ ] **4.2. Definición de Volúmenes Nombrados con Rutas Locales**:
+- [ ] **4.2. Definición de Volúmenes Nombrados con Bind Mounts**:
   ```yaml
   volumes:
     wordpress_data:
@@ -136,34 +151,56 @@ graph TD
         device: /home/${USER}/data/mariadb
   ```
 - [ ] **4.3. Definición de Docker Secrets**:
-  - Mapear los secretos desde `./secrets/*.txt` a la ubicación `/run/secrets/` de cada contenedor.
+  ```yaml
+  secrets:
+    db_password:
+      file: ../secrets/db_password.txt
+    db_root_password:
+      file: ../secrets/db_root_password.txt
+    wp_admin_password:
+      file: ../secrets/wp_admin_password.txt
+  ```
+- [ ] **4.4. Definición de Servicios**:
+  - `mariadb`: build, restart `always`, red `inception_network`, volumen `mariadb_data:/var/lib/mysql`, env_file `.env`, secrets (`db_password`, `db_root_password`).
+  - `wordpress`: build, restart `always`, red `inception_network`, volumen `wordpress_data:/var/www/html`, env_file `.env`, secrets (`db_password`, `wp_admin_password`), `depends_on: mariadb`.
+  - `nginx`: build, restart `always`, red `inception_network`, puertos `"443:443"`, volumen `wordpress_data:/var/www/html`, `depends_on: wordpress`.
 
 ---
 
-### 🔹 FASE 5: Validaciones Locales y Pruebas de Resiliencia
+### 🔹 FASE 5: Validaciones Locales y Pruebas de Resiliencia (⬜ PENDIENTE)
 - [ ] **5.1. Verificación HTTPS**:
   - Acceder a `https://rhiguita.42.fr` en el navegador y comprobar certificado SSL.
-- [ ] **5.2. Verificación de Persistencia**:
-  - Crear un post o usuario en WordPress.
+- [ ] **5.2. Verificación de Persistencia de Datos**:
+  - Crear una entrada/post en WordPress.
   - Ejecutar `make down` o `docker compose down`.
-  - Ejecutar `make up`. Verificar que la entrada/post sigue existiendo.
+  - Ejecutar `make up`. Verificar que la entrada sigue existiendo.
+  - Probar `make fclean` (debe borrar `/home/$(USER)/data/` completamente).
 - [ ] **5.3. Verificación de Aislamiento de Red**:
-  - Probar que MariaDB y WordPress NO son accesibles directamente desde el host (los puertos 3306 y 9000 no deben estar abiertos en la máquina host).
+  - Comprobar que solo el puerto `443` está expuesto en la máquina host (`netstat -tulpn` / `nmap`).
+  - Verificar que ni 3306 ni 9000 son accesibles directamente desde el host.
 - [ ] **5.4. Verificación de Protocolos TLS**:
-  - Ejecutar `curl -I -v --tlsv1.2 https://rhiguita.42.fr` y `curl -I -v --tlsv1.3 https://rhiguita.42.fr`.
-  - Probar TLSv1.1 (debe fallar).
+  - `curl -I -v --tlsv1.2 https://rhiguita.42.fr` (éxito).
+  - `curl -I -v --tlsv1.3 https://rhiguita.42.fr` (éxito).
+  - `curl -I -v --tlsv1.1 https://rhiguita.42.fr` (debe rechazar conexión).
 
 ---
 
-### 🔹 FASE 6: Migración al Cluster de 42 Madrid y Evaluación
-- [ ] **6.1. Clonado en la VM Debian de 42 Madrid**:
-  - Abrir la VM oficial de 42 (o tu sesión en el campus).
-  - Clonar el repositorio de Git.
-- [ ] **6.2. Edición de `/etc/hosts` en la VM**:
-  - `echo "127.0.0.1 rhiguita.42.fr" | sudo tee -a /etc/hosts`
-- [ ] **6.3. Despliegue con `make`**:
-  - Ejecutar `make` en la raíz del repositorio.
-  - Comprobar que los contenedores compilan y levantan sin errores en el entorno del campus.
+### 🔹 FASE 6: Migración al Cluster de 42 Madrid y Evaluación (⬜ PENDIENTE)
+- [ ] **6.1. Clonado en la VM Debian de 42 Madrid**.
+- [ ] **6.2. Edición de `/etc/hosts` en la VM**: `127.0.0.1 rhiguita.42.fr`.
+- [ ] **6.3. Despliegue con `make`**.
 - [ ] **6.4. Simulación de Defensa**:
-  - Revisar los comandos de inspección (`docker ps`, `docker inspect`, `docker network inspect`).
-  - Explicar la diferencia entre VM y contenedores, secretos vs variables, y volúmenes vs bind mounts.
+  - Inspección con `docker ps`, `docker inspect`, `docker network inspect`.
+  - Explicación teórica: VM vs Contenedor, Secrets vs Env Vars, Bind Mounts vs Named Volumes.
+
+---
+
+## 📜 Historial de Commits del Proyecto
+
+| Hash | Mensaje de Commit | Cambios Clave |
+|---|---|---|
+| `6444c97` | `docs(roadmap): mark Phase 2 WordPress+PHP-FPM as complete` | Actualización de Roadmap |
+| `f1acfa1` | `feat(wordpress): add Dockerfile, PHP-FPM config, and entrypoint script` | Fase 2 completada (WordPress + PHP-FPM + WP-CLI) |
+| `6d3744b` | `feat(mariadb): add Dockerfile, server config, and entrypoint script` | Fase 1 completada (MariaDB 0.0.0.0 + Secrets) |
+| `fb4dc45` | `Fase0 estructura de carpetas y configuraciones iniciales path.. etc` | Estrutura de directorios y Makefile |
+| `880dc9d` | `Estructuración y roadmap del proyecto inception` | Creación del roadmap inicial |
