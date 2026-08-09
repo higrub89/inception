@@ -205,7 +205,7 @@ graph TD
 
 | Hash | Mensaje de Commit | Cambios Clave |
 |---|---|---|
-| *(pendiente)* | `feat(nginx): add Dockerfile, nginx.conf, and entrypoint script` | Fase 3 completada (NGINX TLS 1.2/1.3 + reverse proxy → wordpress:9000) |
+| `ab1748d` | `feat(nginx): add Dockerfile, nginx.conf, and entrypoint script` | Fase 3 completada (NGINX TLS 1.2/1.3 + reverse proxy → wordpress:9000) |
 | `5316be2` | `docs(roadmap): expand technical detail for phases 0-6` | Roadmap con detalle técnico completo |
 | `6444c97` | `docs(roadmap): mark Phase 2 WordPress+PHP-FPM as complete` | Actualización de Roadmap |
 | `f1acfa1` | `feat(wordpress): add Dockerfile, PHP-FPM config, and entrypoint script` | Fase 2 completada (WordPress + PHP-FPM + WP-CLI) |
