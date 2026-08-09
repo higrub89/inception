@@ -21,14 +21,15 @@ Para que el proyecto funcione idénticamente en tu portátil y en la VM del camp
 graph TD
     M0["✅ Fase 0: Preparación y Abstracción"] --> M1["✅ Fase 1: MariaDB Container"]
     M1 --> M2["✅ Fase 2: WordPress + PHP-FPM Container"]
-    M2 --> M3["⬜ Fase 3: NGINX TLS/SSL Container"]
+    M2 --> M3["✅ Fase 3: NGINX TLS/SSL Container"]
     M3 --> M4["⬜ Fase 4: Orquestación Compose + Secretos + Volúmenes"]
     M4 --> M5["⬜ Fase 5: Testing Local & Resiliencia"]
     M5 --> M6["⬜ Fase 6: Migración al Cluster 42 & Evaluación"]
     style M0 fill:#2ecc71,color:#fff
     style M1 fill:#2ecc71,color:#fff
     style M2 fill:#2ecc71,color:#fff
-    style M3 fill:#e74c3c,color:#fff
+    style M3 fill:#2ecc71,color:#fff
+    style M4 fill:#e74c3c,color:#fff
 ```
 
 ---
@@ -105,29 +106,34 @@ graph TD
 
 ---
 
-### 🔹 FASE 3: Servicio NGINX (HTTPS & Reverse Proxy) (⬜ PENDIENTE - PRÓXIMO PASO)
-- [ ] **3.1. Dockerfile de NGINX** (`srcs/requirements/nginx/Dockerfile`):
+### 🔹 FASE 3: Servicio NGINX (HTTPS & Reverse Proxy) (✅ COMPLETADA)
+- [x] **3.1. Dockerfile de NGINX** (`srcs/requirements/nginx/Dockerfile`):
   - Basado en `debian:bookworm`.
-  - Instalar `nginx` y `openssl`.
-  - Exponer únicamente el puerto `443` (HTTP/80 estrictamente prohibido por subject).
-- [ ] **3.2. Script Entrypoint / Certificados TLS**:
-  - Generar certificado autofirmado SSL mediante `openssl req -x509` en `/etc/nginx/ssl/nginx.crt` y clave `/etc/nginx/ssl/nginx.key`.
-  - Parámetros: `-nodes -days 365 -newkey rsa:2048 -subj "/C=ES/ST=Madrid/L=Madrid/O=42/OU=Student/CN=rhiguita.42.fr"`.
-- [ ] **3.3. Configuración NGINX (`nginx.conf`)**:
-  - Directiva `listen 443 ssl;`.
+  - Instala `nginx` y `openssl`.
+  - Expone únicamente el puerto `443` (HTTP/80 estrictamente prohibido por subject).
+- [x] **3.2. Script Entrypoint (`tools/entrypoint.sh`)**:
+  - Lee `DOMAIN_NAME` del entorno de Docker.
+  - Genera certificado autofirmado SSL con `openssl req -x509 -nodes -days 365 -newkey rsa:2048` en `/etc/nginx/ssl/` si no existe.
+  - Subject del cert: `/C=ES/ST=Madrid/L=Madrid/O=42Madrid/OU=Student/CN=${DOMAIN}`.
+  - Inyecta el dominio en `nginx.conf` mediante `sed -i "s/__DOMAIN_NAME__/${DOMAIN}/g"`.
+  - Valida la configuración con `nginx -t` antes de arrancar.
+  - Arranca en primer plano con `exec nginx -g "daemon off;"` (PID 1).
+- [x] **3.3. Configuración NGINX (`conf/nginx.conf`)**:
+  - `listen 443 ssl;` / `listen [::]:443 ssl;`.
   - TLS estricto: `ssl_protocols TLSv1.2 TLSv1.3;`.
-  - `server_name rhiguita.42.fr;`.
+  - Placeholder `__DOMAIN_NAME__` sustituido en runtime por el entrypoint.
   - Root: `/var/www/html` con `index index.php index.html;`.
+  - `try_files $uri $uri/ /index.php?$args;` para WordPress permalinks.
   - Bloque FastCGI para procesamiento de PHP:
     ```nginx
     location ~ \.php$ {
         include fastcgi_params;
-        fastcgi_intercept_errors on;
         fastcgi_pass wordpress:9000;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors on;
     }
     ```
-  - Arrancar NGINX en primer plano: `daemon off;` / `exec nginx -g "daemon off;"`.
+  - Bloque de seguridad: `location ~ /\. { deny all; }`.
 
 ---
 
@@ -199,6 +205,8 @@ graph TD
 
 | Hash | Mensaje de Commit | Cambios Clave |
 |---|---|---|
+| *(pendiente)* | `feat(nginx): add Dockerfile, nginx.conf, and entrypoint script` | Fase 3 completada (NGINX TLS 1.2/1.3 + reverse proxy → wordpress:9000) |
+| `5316be2` | `docs(roadmap): expand technical detail for phases 0-6` | Roadmap con detalle técnico completo |
 | `6444c97` | `docs(roadmap): mark Phase 2 WordPress+PHP-FPM as complete` | Actualización de Roadmap |
 | `f1acfa1` | `feat(wordpress): add Dockerfile, PHP-FPM config, and entrypoint script` | Fase 2 completada (WordPress + PHP-FPM + WP-CLI) |
 | `6d3744b` | `feat(mariadb): add Dockerfile, server config, and entrypoint script` | Fase 1 completada (MariaDB 0.0.0.0 + Secrets) |
