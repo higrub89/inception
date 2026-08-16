@@ -191,7 +191,8 @@ graph TD
 
 ---
 
-### 🔹 FASE 6: Migración al Cluster de 42 Madrid y Evaluación (⬜ PENDIENTE)
+### 🔹 FASE 6: Migración al Cluster de 42 Madrid y Evaluación (🟨 EN PROGRESO)
+- [x] **6.0. Instalación/Provisionado de la VM Debian en el cluster de 42 Madrid**.
 - [ ] **6.1. Clonado en la VM Debian de 42 Madrid**.
 - [ ] **6.2. Edición de `/etc/hosts` en la VM**: `127.0.0.1 rhiguita.42.fr`.
 - [ ] **6.3. Despliegue con `make`**.
