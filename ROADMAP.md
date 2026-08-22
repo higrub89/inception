@@ -22,14 +22,16 @@ graph TD
     M0["✅ Fase 0: Preparación y Abstracción"] --> M1["✅ Fase 1: MariaDB Container"]
     M1 --> M2["✅ Fase 2: WordPress + PHP-FPM Container"]
     M2 --> M3["✅ Fase 3: NGINX TLS/SSL Container"]
-    M3 --> M4["⬜ Fase 4: Orquestación Compose + Secretos + Volúmenes"]
-    M4 --> M5["⬜ Fase 5: Testing Local & Resiliencia"]
+    M3 --> M4["✅ Fase 4: Orquestación Compose + Secretos + Volúmenes"]
+    M4 --> M5["✅ Fase 5: Testing Local & Resiliencia"]
     M5 --> M6["⬜ Fase 6: Migración al Cluster 42 & Evaluación"]
     style M0 fill:#2ecc71,color:#fff
     style M1 fill:#2ecc71,color:#fff
     style M2 fill:#2ecc71,color:#fff
     style M3 fill:#2ecc71,color:#fff
-    style M4 fill:#e74c3c,color:#fff
+    style M4 fill:#2ecc71,color:#fff
+    style M5 fill:#2ecc71,color:#fff
+    style M6 fill:#e74c3c,color:#fff
 ```
 
 ---
@@ -137,10 +139,10 @@ graph TD
 
 ---
 
-### 🔹 FASE 4: Orquestación General (`srcs/docker-compose.yml`) (⬜ PENDIENTE)
-- [ ] **4.1. Definición de Red**:
+### 🔹 FASE 4: Orquestación General (`srcs/docker-compose.yml`) (✅ COMPLETADA)
+- [x] **4.1. Definición de Red**:
   - Red aislada tipo bridge: `inception_network`.
-- [ ] **4.2. Definición de Volúmenes Nombrados con Bind Mounts**:
+- [x] **4.2. Definición de Volúmenes Nombrados con Bind Mounts**:
   ```yaml
   volumes:
     wordpress_data:
@@ -148,15 +150,15 @@ graph TD
       driver_opts:
         type: none
         o: bind
-        device: /home/${USER}/data/wordpress
+        device: /home/${INCEPTION_USER}/data/wordpress
     mariadb_data:
       driver: local
       driver_opts:
         type: none
         o: bind
-        device: /home/${USER}/data/mariadb
+        device: /home/${INCEPTION_USER}/data/mariadb
   ```
-- [ ] **4.3. Definición de Docker Secrets**:
+- [x] **4.3. Definición de Docker Secrets**:
   ```yaml
   secrets:
     db_password:
@@ -166,25 +168,25 @@ graph TD
     wp_admin_password:
       file: ../secrets/wp_admin_password.txt
   ```
-- [ ] **4.4. Definición de Servicios**:
-  - `mariadb`: build, restart `always`, red `inception_network`, volumen `mariadb_data:/var/lib/mysql`, env_file `.env`, secrets (`db_password`, `db_root_password`).
-  - `wordpress`: build, restart `always`, red `inception_network`, volumen `wordpress_data:/var/www/html`, env_file `.env`, secrets (`db_password`, `wp_admin_password`), `depends_on: mariadb`.
-  - `nginx`: build, restart `always`, red `inception_network`, puertos `"443:443"`, volumen `wordpress_data:/var/www/html`, `depends_on: wordpress`.
+- [x] **4.4. Definición de Servicios**:
+  - `mariadb`: build, restart `unless-stopped`, red `inception_network`, volumen `mariadb_data:/var/lib/mysql`, env_file `.env`, secrets (`db_password`, `db_root_password`).
+  - `wordpress`: build, restart `unless-stopped`, red `inception_network`, volumen `wordpress_data:/var/www/html`, env_file `.env`, secrets (`db_password`, `wp_admin_password`), `depends_on: mariadb`.
+  - `nginx`: build, restart `unless-stopped`, red `inception_network`, puertos `"443:443"`, volumen `wordpress_data:/var/www/html`, `depends_on: wordpress`.
 
 ---
 
-### 🔹 FASE 5: Validaciones Locales y Pruebas de Resiliencia (⬜ PENDIENTE)
-- [ ] **5.1. Verificación HTTPS**:
+### 🔹 FASE 5: Validaciones Locales y Pruebas de Resiliencia (✅ COMPLETADA)
+- [x] **5.1. Verificación HTTPS**:
   - Acceder a `https://rhiguita.42.fr` en el navegador y comprobar certificado SSL.
-- [ ] **5.2. Verificación de Persistencia de Datos**:
+- [x] **5.2. Verificación de Persistencia de Datos**:
   - Crear una entrada/post en WordPress.
   - Ejecutar `make down` o `docker compose down`.
   - Ejecutar `make up`. Verificar que la entrada sigue existiendo.
-  - Probar `make fclean` (debe borrar `/home/$(USER)/data/` completamente).
-- [ ] **5.3. Verificación de Aislamiento de Red**:
+  - Probar `make fclean` (debe borrar `/home/$(INCEPTION_USER)/data/` completamente).
+- [x] **5.3. Verificación de Aislamiento de Red**:
   - Comprobar que solo el puerto `443` está expuesto en la máquina host (`netstat -tulpn` / `nmap`).
   - Verificar que ni 3306 ni 9000 son accesibles directamente desde el host.
-- [ ] **5.4. Verificación de Protocolos TLS**:
+- [x] **5.4. Verificación de Protocolos TLS**:
   - `curl -I -v --tlsv1.2 https://rhiguita.42.fr` (éxito).
   - `curl -I -v --tlsv1.3 https://rhiguita.42.fr` (éxito).
   - `curl -I -v --tlsv1.1 https://rhiguita.42.fr` (debe rechazar conexión).
@@ -206,6 +208,7 @@ graph TD
 
 | Hash | Mensaje de Commit | Cambios Clave |
 |---|---|---|
+| `c8a7a24` | `fix(infra): resolve all critical deployment blockers` | Fase 4 y 5 completadas (docker-compose, secrets, bind mounts, Makefile, MariaDB socket) |
 | `ab1748d` | `feat(nginx): add Dockerfile, nginx.conf, and entrypoint script` | Fase 3 completada (NGINX TLS 1.2/1.3 + reverse proxy → wordpress:9000) |
 | `5316be2` | `docs(roadmap): expand technical detail for phases 0-6` | Roadmap con detalle técnico completo |
 | `6444c97` | `docs(roadmap): mark Phase 2 WordPress+PHP-FPM as complete` | Actualización de Roadmap |
