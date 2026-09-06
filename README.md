@@ -1,6 +1,8 @@
 *This project has been created as part of the 42 curriculum by rhiguita.*
 
-# 🐳 Inception
+# Inception
+
+## Description
 
 Inception is a System Administration project in the 42 curriculum designed to introduce learners to system virtualization using Docker. The goal is to build a multi-container, fully secure, and isolated web infrastructure from scratch using **Docker Compose** on a Debian-based virtual machine.
 
@@ -112,7 +114,11 @@ graph TD
 
 ---
 
-## 🛠️ Instructions
+## Instructions
+
+### Documentation
+- [User & Administrator Documentation (USER_DOC.md)](./USER_DOC.md) — Usage, credentials, stack lifecycle, and sanity checks.
+- [Developer Documentation (DEV_DOC.md)](./DEV_DOC.md) — Technical setup, build pipeline, Docker commands, and volume architecture.
 
 ### Prerequisites
 - Operating System: **Linux** (Debian/Ubuntu recommended)
@@ -144,7 +150,7 @@ make fclean
 
 ---
 
-## 📚 Resources & AI Statement
+## Resources
 
 ### Reference Materials
 - [Docker Documentation](https://docs.docker.com/) — Official reference for Dockerfiles and Compose files.

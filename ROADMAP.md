@@ -43,6 +43,10 @@ graph TD
   ```text
   inception/
   ├── Makefile
+  ├── README.md
+  ├── USER_DOC.md
+  ├── DEV_DOC.md
+  ├── ROADMAP.md
   ├── secrets/                 # Ignorado en .gitignore (.txt con passwords)
   └── srcs/
       ├── .env                 # Ignorado en .gitignore (se incluye .env.example)
@@ -101,7 +105,7 @@ graph TD
   - Si `/var/www/html/wp-config.php` no existe:
     - Ejecuta `wp core download`.
     - Ejecuta `wp config create` apuntando a `mariadb:3306` con secretos de `/run/secrets/`.
-    - Ejecuta `wp core install` con dominio `https://${DOMAIN_NAME}`, título, usuario administrador (`WP_ADMIN_USER`) y password (`wp_admin_password`).
+    - Ejecuta `wp core install` con dominio `https://${DOMAIN_NAME}`, título, usuario administrador (`WP_ADMIN_USER`, e.g. `rhiguita_master` - sin incluir la palabra 'admin'/'Admin') y password (`wp_admin_password`).
     - Crea el segundo usuario requerido (`WP_USER`, rol suscriptor).
   - Ajusta los permisos de `/var/www/html` a `www-data:www-data`.
   - Arranca PHP-FPM en primer plano con `exec php-fpm8.2 -F` (PID 1).

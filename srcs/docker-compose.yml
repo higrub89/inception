@@ -3,6 +3,7 @@ services:
     build:
       context: ./requirements/mariadb
       dockerfile: Dockerfile
+    image: mariadb
     container_name: mariadb
     restart: unless-stopped
     env_file: .env
@@ -24,6 +25,7 @@ services:
     build:
       context: ./requirements/wordpress
       dockerfile: Dockerfile
+    image: wordpress
     container_name: wordpress
     restart: unless-stopped
     env_file: .env
@@ -42,6 +44,7 @@ services:
     build:
       context: ./requirements/nginx
       dockerfile: Dockerfile
+    image: nginx
     container_name: nginx
     restart: unless-stopped
     env_file: .env
