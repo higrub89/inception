@@ -39,16 +39,10 @@ jobs:
           cp srcs/.env.example srcs/.env
           docker compose -f srcs/docker-compose.yml config
 
-      - name: Build Container Images
+      - name: Build Container Images with Docker Compose
         run: |
-          echo "=== Building NGINX Image ==="
-          docker build -t inception-nginx srcs/requirements/nginx
-
-          echo "=== Building MariaDB Image ==="
-          docker build -t inception-mariadb srcs/requirements/mariadb
-
-          echo "=== Building WordPress Image ==="
-          docker build -t inception-wordpress srcs/requirements/wordpress
+          echo "=== Building Inception Images with Docker Compose ==="
+          docker compose -f srcs/docker-compose.yml build
 
       - name: Integration & Network Isolation Test
         run: |
@@ -57,7 +51,7 @@ jobs:
           sudo chmod 777 /home/runner/data/wordpress /home/runner/data/mariadb
 
           echo "=== Starting Inception Stack ==="
-          docker compose -f srcs/docker-compose.yml up -d
+          docker compose -f srcs/docker-compose.yml up -d --build
 
           echo "Waiting for services to become healthy..."
           for i in {1..30}; do
