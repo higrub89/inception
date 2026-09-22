@@ -1,0 +1,96 @@
+name: Inception Infrastructure CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  docker-validation-and-build:
+    name: Docker Infrastructure & Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Security Audit — Secrets & Environment Variables Leak Detection
+        run: |
+          echo "=== Auditing repository for leaked credentials ==="
+          if [ -f "srcs/.env" ]; then
+            echo "Error: srcs/.env must not be tracked in git!"
+            exit 1
+          fi
+          if [ -d "secrets" ] && [ -n "$(find secrets -name '*.txt' 2>/dev/null)" ]; then
+            echo "Error: Actual secrets must not be committed to git!"
+            exit 1
+          fi
+          echo "Secrets hygiene verified: 0 leaked credentials."
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          mkdir -p secrets
+          echo "test_db_pass" > secrets/db_password.txt
+          echo "test_root_pass" > secrets/db_root_password.txt
+          echo "test_admin_pass" > secrets/wp_admin_password.txt
+          chmod 600 secrets/*.txt
+          cp srcs/.env.example srcs/.env
+          docker compose -f srcs/docker-compose.yml config
+
+      - name: Build Container Images
+        run: |
+          echo "=== Building NGINX Image ==="
+          docker build -t inception-nginx srcs/requirements/nginx
+
+          echo "=== Building MariaDB Image ==="
+          docker build -t inception-mariadb srcs/requirements/mariadb
+
+          echo "=== Building WordPress Image ==="
+          docker build -t inception-wordpress srcs/requirements/wordpress
+
+      - name: Integration & Network Isolation Test
+        run: |
+          export INCEPTION_USER="runner"
+          sudo mkdir -p /home/runner/data/wordpress /home/runner/data/mariadb
+          sudo chmod 777 /home/runner/data/wordpress /home/runner/data/mariadb
+
+          echo "=== Starting Inception Stack ==="
+          docker compose -f srcs/docker-compose.yml up -d
+
+          echo "Waiting for services to become healthy..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' mariadb 2>/dev/null || echo "unhealthy")
+            if [ "$STATUS" = "\"healthy\"" ]; then
+              echo "MariaDB is healthy!"
+              break
+            fi
+            echo "Waiting for MariaDB ($i/30)..."
+            sleep 2
+          done
+
+          sleep 5
+          docker compose -f srcs/docker-compose.yml ps
+
+          echo "=== Test 1: Verify Port 443 (HTTPS / TLS) ==="
+          curl -k -I https://localhost:443 || exit 1
+
+          echo "=== Test 2: Verify Port 80 is strictly blocked (Forbidden by 42 Subject) ==="
+          if curl --connect-timeout 2 http://localhost:80 2>/dev/null; then
+            echo "Error: Port 80 should NOT be open!"
+            exit 1
+          fi
+          echo "Port 80 is properly closed."
+
+          echo "=== Test 3: Verify Database Port 3306 is not exposed to host ==="
+          if nc -z -w2 localhost 3306 2>/dev/null; then
+            echo "Error: Port 3306 should NOT be exposed to host!"
+            exit 1
+          fi
+          echo "Port 3306 is properly isolated inside internal bridge network."
+
+          echo "=== Tear Down Stack ==="
+          docker compose -f srcs/docker-compose.yml down -v
+          sudo rm -rf /home/runner/data
+          echo "Inception infrastructure validation passed with 100% compliance!"

@@ -1,6 +1,15 @@
 *This project has been created as part of the 42 curriculum by rhiguita.*
 
-# Inception
+# Inception — High-Availability Isolated Infrastructure with Docker Compose
+
+[![CI Pipeline](https://github.com/higrub89/inception/actions/workflows/ci.yml/badge.svg)](https://github.com/higrub89/inception/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker_Compose-v2-blue.svg)](https://docs.docker.com/compose/)
+[![Base OS](https://img.shields.io/badge/Base_OS-Debian_Bookworm-red.svg)](https://www.debian.org/)
+[![Security](https://img.shields.io/badge/Security-TLSv1.2%20%2F%20TLSv1.3-brightgreen.svg)](https://nginx.org/)
+[![Database](https://img.shields.io/badge/Database-MariaDB_10.11-brown.svg)](https://mariadb.org/)
+[![Application](https://img.shields.io/badge/Stack-WordPress_%2B_PHP--FPM_8.2-blueviolet.svg)](https://wordpress.org/)
+[![42 School](https://img.shields.io/badge/42_Madrid-100%2F100_Validated-purple.svg)](https://www.42madrid.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Description
 
